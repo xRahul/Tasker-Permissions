@@ -185,19 +185,22 @@ export class App extends Control {
                 const match = permissionLine.match(/([^:]+): granted=([^\r,]+)/);
                 return {permission:match[1].trim(),granted:match[2] == "true" ? true: false};
             });
-            const addAppOpsPermission = async permission => {             
+            const getAppOpsPermission = async permission => {
                 const granted = await this.getAppOppsPermissionGranted(permission);
-                result.push({permission,granted});
+                return {permission,granted};
             }
-            const addSettingPermission = async permission => {             
+            const getSettingPermission = async permission => {
                 const granted = await this.getSettingGranted(permission);
-                result.push({permission,granted});
+                return {permission,granted};
             }
-            await addAppOpsPermission("PROJECT_MEDIA");
-            await addAppOpsPermission("SYSTEM_ALERT_WINDOW");
-            await addAppOpsPermission("GET_USAGE_STATS");
-            await addAppOpsPermission("WRITE_SETTINGS");
-            await addSettingPermission("hidden_api_policy");
+            const additionalPermissions = await Promise.all([
+                getAppOpsPermission("PROJECT_MEDIA"),
+                getAppOpsPermission("SYSTEM_ALERT_WINDOW"),
+                getAppOpsPermission("GET_USAGE_STATS"),
+                getAppOpsPermission("WRITE_SETTINGS"),
+                getSettingPermission("hidden_api_policy")
+            ]);
+            result.push(...additionalPermissions);
             return result;
         })();
     }
