@@ -475,18 +475,18 @@ export class Util {
     static removeIf(array, condition) {
         if (!array || array.length == 0) return;
 
-        for (let index = 0; index < array.length; index++) {
-            const item = array[index];
-            if (!condition(item)) continue;
-
-            array.splice(index, 1);
-            index--;
+        let writeIndex = 0;
+        for (let readIndex = 0; readIndex < array.length; readIndex++) {
+            const item = array[readIndex];
+            if (!condition(item)) {
+                if (readIndex !== writeIndex) {
+                    array[writeIndex] = item;
+                }
+                writeIndex++;
+            }
         }
+        array.length = writeIndex;
         return array;
-        // const notInCondition = array.filter(item=>!condition(item));
-        // array.length = 0;
-        // notInCondition.forEach(item=>array.push(item));
-        // return array;
     }
     static get darkModeEnabled() {
         const result = darkModeMediaQuery();
