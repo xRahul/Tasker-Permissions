@@ -91,17 +91,29 @@ export class Control extends ExtendableProxy {
         if(clearBeforeAdding){
             controls = [];
         }
+        const promises = [];
         for(const item of list){
             if(condition && !condition(item)) continue;
             
-            let render = null;
-            try{
-                const control = new itemControlClass(item,extraArgs);
+            promises.push(async () => {
+                let render = null;
+                let control = null;
+                try{
+                    control = new itemControlClass(item,extraArgs);
+                    render = await control.render();
+                }catch(error){
+                    console.log("Warning, error rendering", this, error);
+                    render = itemControlClass(item);
+                }
+                return {render,control};
+            })
+        }
+        const results = await Promise.all(promises.map(p=>p()));
+        for(const result of results){
+            const render = result.render;
+            const control = result.control;
+            if(control){
                 controls.push(control);
-                render = await control.render();
-            }catch(error){
-                console.log("Warning, error rendering", this, error);
-                render = itemControlClass(item);
             }
             parent.appendChild(render);
         }
@@ -130,36 +142,39 @@ export class Control extends ExtendableProxy {
 
         let html = this.html;
         let htmlFile = html ? Util.getType(this) : this.getHtmlFile();
-        var element = elements[htmlFile];
-        try{            
-            
-            if(element){
-                element = element.cloneNode(true);
+        if(!elements[htmlFile]){
+            elements[htmlFile] = (async () => {
+                const style = this.css;
+                if(style){
+                    UtilDOM.addStyle(style);
+                }
+                const styleFile = await this.getCssFile();
+                if(styleFile){
+                    UtilDOM.addStyleFromFile(styleFile);
+                }
+
+                if(!html){
+                    // let localPath = window.document.location.href
+                    // if(localPath.startsWith("file://")){
+                    //     localPath = localPath.substring(0,localPath.lastIndexOf("/")+1);
+                    //     htmlFile = htmlFile.replace("./",localPath)
+                    // }
+                    const htmlResult = await fetch(htmlFile);
+                    html = await htmlResult.text();
+                }
+                const document = new DOMParser().parseFromString(html,"text/html");
+                const element = document.firstChild.children[1].firstChild.cloneNode(true);
                 return element;
-            } 
-            
-            const style = this.css;
-            if(style){
-                UtilDOM.addStyle(style);
-            }
-            const styleFile = await this.getCssFile();
-            if(styleFile){
-                UtilDOM.addStyleFromFile(styleFile);
-            }
-            
-            if(!html){
-                // let localPath = window.document.location.href
-                // if(localPath.startsWith("file://")){
-                //     localPath = localPath.substring(0,localPath.lastIndexOf("/")+1);
-                //     htmlFile = htmlFile.replace("./",localPath)
-                // }
-                const htmlResult = await fetch(htmlFile);
-                html = await htmlResult.text();                    
-            }
-            const document = new DOMParser().parseFromString(html,"text/html");
-            element = document.firstChild.children[1].firstChild.cloneNode(true);
-            elements[htmlFile] = element;
+            })();
+        }
+        var element = null;
+        try{
+            const template = await elements[htmlFile];
+            element = template.cloneNode(true);
             return element;
+        }catch(err){
+            delete elements[htmlFile];
+            throw err;
         }finally{
             this.element = element;
         }
