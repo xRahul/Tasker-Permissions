@@ -93,7 +93,7 @@ export class Server {
         })
     }
     getCurrentAppPath() {
-        return require('electron').app.getAppPath().replaceAll("\\", "/");
+        return app.getAppPath().replaceAll("\\", "/");
     }
     async logConsole(log, args) {
         console.log(log, args);
