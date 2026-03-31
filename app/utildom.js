@@ -125,9 +125,7 @@ export class UtilDOM{
         return element;
     }
     static async addScriptFiles(...scriptFiles){
-        for(const scriptFile of scriptFiles){
-            await UtilDOM.addScriptFile(scriptFile);
-        }
+        await Promise.all(scriptFiles.map(scriptFile => UtilDOM.addScriptFile(scriptFile)));
     }
     static async addStyleFromFile(file){
         const cssResult = await fetch(file);
